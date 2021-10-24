@@ -7,23 +7,25 @@
 #define MAX_LOADSTRING 100          //Max string size for text
 
 // Global Variables:
-HINSTANCE hInst;                                // current instance
+HINSTANCE hInst;                                //Current instance
 HANDLE secInst;                                 //Second Thread
-WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
+WCHAR szTitle[MAX_LOADSTRING];                  //The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 NOTIFYICONDATA NotifyIcon;                      //Create System Tray variable
 std::string AKL;                                //Active Keyboard Layout ID
 
 
 // Forward declarations of functions included in this code module:
-ATOM                MyRegisterClass(HINSTANCE hInstance);   //Class Registration
-BOOL                InitInstance(HINSTANCE, int);           //Main Window Declaration
-LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);    //Windows Procedure (message handler)
-INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);      //About Dialog Procedure (message handler)
-void                menuCreate(HWND, UINT, WPARAM, LPARAM); //Create the main menu window
-void                AKLToggle(HWND, UINT, WPARAM, LPARAM);  //Create the main menu window
-DWORD WINAPI        secondThreadFunc(LPVOID lpParam);       // Creates a second Thread for the application
-std::string         getKeyboardLayout();                    // Gets Keyboard Layout Dynamically as an integer in its Identifier Code
+ATOM                MyRegisterClass(HINSTANCE hInstance);           //Class Registration
+BOOL                InitInstance(HINSTANCE, int);                   //Main Window Declaration
+LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);            //Windows Procedure (message handler)
+INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);              //About Dialog Procedure (message handler)
+void                menuCreate(HWND, UINT, WPARAM, LPARAM);         //Create the main menu window
+void                AKLToggle(HWND, UINT, WPARAM, LPARAM);          //Toggles the Active Keyboard Layout thread
+DWORD WINAPI        secondThreadFunc(LPVOID lpParam);               //Creates a second Thread for the application
+std::string         getKeyboardLayout();                            //Gets Keyboard Layout Dynamically as an integer in its Identifier Code
+void                SysTrayIcoCreate(HWND, UINT, WPARAM, LPARAM);   //Creates the System icon tray
+void                SysTrayIcoMenu(HWND, UINT, WPARAM, LPARAM);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,             //Main Function that will start the application
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -68,8 +70,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,             //Main Function that
 
     return (int) msg.wParam;                                    //Finalize the application
 }
-
-
 
 //
 //  FUNCTION: MyRegisterClass()
@@ -130,10 +130,11 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 //  PURPOSE: Processes messages for the main window.
 //
-//  WM_CREATE   - Runs once the application starts
-//  WM_COMMAND  - Process the application menu
-//  WM_PAINT    - Paint the main window
-//  WM_DESTROY  - Post a quit message and return
+//  WM_CREATE       - Runs once the application starts
+//  WM_COMMAND      - Process the application Main menu
+//  WM_SYSTRAYICO   - Process the System tray icon PopUp menu
+//  WM_PAINT        - Paint the main window
+//  WM_DESTROY      - Post a quit message and return
 //
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -143,39 +144,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_CREATE:
         {   
             menuCreate(hWnd, message, wParam, lParam);
-            
-            ZeroMemory(&NotifyIcon, sizeof(NOTIFYICONDATA));                                
-
-            NotifyIcon.cbSize = sizeof(NOTIFYICONDATA);                                     //Get size of variable
-            NotifyIcon.hWnd = hWnd;                                                         //Connect it to the main app message handler
-            NotifyIcon.hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_PAPUNNAMEDKEYBOARD));    //Load Icon for system tray
-            NotifyIcon.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;                           //Load Flags that for functionality
-            NotifyIcon.uID = 1;
-            NotifyIcon.uCallbackMessage = WM_USER + 1;
-
-            Shell_NotifyIcon(NIM_ADD, &NotifyIcon);                                         //Add the Icon and show it
+            SysTrayIcoCreate(hWnd, message, wParam, lParam);                              
         }
         break;
 
-    case WM_USER + 1:
-        {
-            WORD cmd = LOWORD(lParam);
-            if (cmd == WM_RBUTTONUP || cmd == WM_LBUTTONUP)
-            {
-                POINT pt;
-                GetCursorPos(&pt);
-                HMENU hmenu = CreatePopupMenu();
-                InsertMenu(hmenu, 0, MF_BYPOSITION | MF_STRING, IDM_EXIT, L"Exit");
-                TrackPopupMenu(hmenu, TPM_LEFTALIGN | TPM_LEFTBUTTON | TPM_BOTTOMALIGN, pt.x, pt.y, 0, hWnd, NULL);
-            }
-            break;
-        }
-
     case WM_COMMAND:    
         {
-            int wmId = LOWORD(wParam);
             // Parse the menu selections:
-            switch (wmId)
+            switch (LOWORD(wParam))
             {
             case IDM_AKL:               //Toggle AKL Option
                 AKLToggle(hWnd, message, wParam, lParam);
@@ -195,6 +171,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         break;
 
+    case WM_SYSTRAYICO:
+        // systray msg callback 
+        switch (LOWORD(lParam))
+        {
+            case WM_RBUTTONDOWN:
+                SysTrayIcoMenu(hWnd, message, wParam, lParam);
+                break;
+
+            default:
+                break;
+        }
+        break;
+
     case WM_PAINT:
         {
             PAINTSTRUCT ps;
@@ -205,9 +194,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
 
     case WM_DESTROY:
-
-        Shell_NotifyIcon(NIM_DELETE, &NotifyIcon);
-        PostQuitMessage(0); //Quit the application and exit the code.
+        {
+            Shell_NotifyIcon(NIM_DELETE, &NotifyIcon);
+            PostQuitMessage(0); //Quit the application and exit the code.
+        }
         break;
 
     default:
@@ -278,6 +268,62 @@ void menuCreate(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 }
 
+//
+//  FUNCTION: SysTrayIcoCreate(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+//
+//  PURPOSE: Creates an Icon for the System Tray
+//
+//
+void SysTrayIcoCreate(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    NotifyIcon.hWnd = hWnd;                                                         //Connect it to the main app message handler
+    NotifyIcon.hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_PAPUNNAMEDKEYBOARD));    //Load Icon for system tray
+    NotifyIcon.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;                           //Load Flags that for functionality
+    NotifyIcon.uCallbackMessage = WM_SYSTRAYICO;
+
+    // This text will be shown as the icon's tooltip.
+    StringCchCopy(NotifyIcon.szTip, ARRAYSIZE(NotifyIcon.szTip), L"PAP Unnamed Keyboard");
+
+    //Add the Icon and show it
+    Shell_NotifyIcon(NIM_ADD, &NotifyIcon);
+    // Set the version
+    Shell_NotifyIcon(NIM_SETVERSION, &NotifyIcon);
+
+}
+
+//
+//  FUNCTION: SysTrayIcoMenu(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+//
+//  PURPOSE: Creates the menu for the Icon in the system tray
+//
+//
+void SysTrayIcoMenu(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
+{
+    POINT pt;
+    GetCursorPos(&pt);
+
+    HMENU hPopMenu = CreatePopupMenu();
+    MENUITEMINFO hExit;
+
+    memset(&hExit, 0, sizeof(hExit));
+    hExit.cbSize = sizeof(hExit);
+    hExit.fMask = MIIM_TYPE | MIIM_ID;
+    hExit.fType = MFT_STRING;
+    hExit.wID = IDM_EXIT;
+    hExit.dwTypeData = (LPWSTR)L"Exit";
+
+    InsertMenuItem(hPopMenu, SC_CLOSE, FALSE, &hExit);
+
+    SetForegroundWindow(hWnd);
+    TrackPopupMenu(hPopMenu, TPM_LEFTALIGN | TPM_LEFTBUTTON | TPM_BOTTOMALIGN, pt.x, pt.y, 0, hWnd, NULL);
+}
+
+//
+//  FUNCTION: AKLToggle(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+//
+//  PURPOSE: Toggles the Active Keyboard layout capture
+//
+//
 void AKLToggle(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     HMENU hMenu = GetMenu(hWnd);
@@ -309,6 +355,12 @@ DWORD WINAPI secondThreadFunc(LPVOID lpParam)
     return 0;
 }
 
+//
+//  FUNCTION: getKeyboardLayout()
+//
+//  PURPOSE: Gets the information of the keyboard layout currently in use for the operating system
+//
+//
 std::string getKeyboardLayout() 
 {
     std::stringstream temp;

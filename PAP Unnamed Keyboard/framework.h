@@ -16,3 +16,5 @@
 #include <shellapi.h>
 #include <iostream>
 #include <sstream>
+#include <strsafe.h>
+#include <commctrl.h>

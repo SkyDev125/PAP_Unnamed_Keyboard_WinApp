@@ -15,7 +15,7 @@
 #define IDI_ICON1                       129
 #define IDC_STATIC                      -1
 #define IDM_AKL							130
-
+#define WM_SYSTRAYICO					141
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
