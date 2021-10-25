@@ -13,6 +13,8 @@ WCHAR szTitle[MAX_LOADSTRING];                  //The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 NOTIFYICONDATA NotifyIcon;                      //Create System Tray variable
 std::string AKL;                                //Active Keyboard Layout ID
+HMENU hMainMenu;
+HBITMAP hBitmap = NULL;
 
 
 // Forward declarations of functions included in this code module:
@@ -26,6 +28,7 @@ DWORD WINAPI        secondThreadFunc(LPVOID lpParam);               //Creates a 
 std::string         getKeyboardLayout();                            //Gets Keyboard Layout Dynamically as an integer in its Identifier Code
 void                SysTrayIcoCreate(HWND, UINT, WPARAM, LPARAM);   //Creates the System icon tray
 void                SysTrayIcoMenu(HWND, UINT, WPARAM, LPARAM);
+void                loadImages(HWND, UINT, WPARAM, LPARAM);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,             //Main Function that will start the application
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -112,7 +115,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    hInst = hInstance; // Store instance handle in our global variable
 
    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,   //Create the Window
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr); 
+      CW_USEDEFAULT, CW_USEDEFAULT, 1200, 500, nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
    {
@@ -143,8 +146,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
     case WM_CREATE:
         {   
+            loadImages(hWnd, message, wParam, lParam);
             menuCreate(hWnd, message, wParam, lParam);
-            SysTrayIcoCreate(hWnd, message, wParam, lParam);                              
+            SysTrayIcoCreate(hWnd, message, wParam, lParam);    
         }
         break;
 
@@ -186,15 +190,34 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     case WM_PAINT:
         {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: Add any drawing code that uses hdc here...
+            PAINTSTRUCT     ps;
+            HDC             hdc;
+            BITMAP          bitmap;
+            HDC             hdcMem;
+            HGDIOBJ         oldBitmap;
+
+            hdc = BeginPaint(hWnd, &ps);
+
+            hdcMem = CreateCompatibleDC(hdc);
+            oldBitmap = SelectObject(hdcMem, hBitmap);
+
+            GetObject(hBitmap, sizeof(bitmap), &bitmap);
+            int     posx    = 70; 
+            int     posy    = 45;
+            int     sizex   = 0;
+            int     sizey   = 0;
+            BitBlt(hdc, posx, posy, bitmap.bmWidth, bitmap.bmHeight, hdcMem, sizex, sizey, SRCCOPY);
+
+            SelectObject(hdcMem, oldBitmap);
+            DeleteDC(hdcMem);
+
             EndPaint(hWnd, &ps);
         }
         break;
 
     case WM_DESTROY:
         {
+            DeleteObject(hBitmap);
             Shell_NotifyIcon(NIM_DELETE, &NotifyIcon);
             PostQuitMessage(0); //Quit the application and exit the code.
         }
@@ -244,15 +267,15 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 //
 void menuCreate(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    HMENU hMenubar = CreateMenu();
+    hMainMenu = CreateMenu();
     HMENU hFile = CreateMenu();
     HMENU hOptions  = CreateMenu();
     HMENU hAbout = CreateMenu();
     
     //Main Window Menu options
-    AppendMenu(hMenubar, MF_POPUP, (UINT_PTR) hFile, L"File");
-    AppendMenu(hMenubar, MF_POPUP, (UINT_PTR) hOptions, L"Options");
-    AppendMenu(hMenubar, MF_POPUP, (UINT_PTR) hAbout, L"About");
+    AppendMenu(hMainMenu, MF_POPUP, (UINT_PTR) hFile, L"File");
+    AppendMenu(hMainMenu, MF_POPUP, (UINT_PTR) hOptions, L"Options");
+    AppendMenu(hMainMenu, MF_POPUP, (UINT_PTR) hAbout, L"About");
     
     //Main Window Menu SubOptions for "File"
     AppendMenu(hFile, MF_STRING, IDM_EXIT, L"Exit");
@@ -264,8 +287,7 @@ void menuCreate(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     //Main Window Menu SubOptions for "About"
     AppendMenu(hAbout, MF_STRING, IDM_ABOUT, L"Copyright");
 
-    SetMenu(hWnd, hMenubar);
-
+    SetMenu(hWnd, hMainMenu);
 }
 
 //
@@ -299,23 +321,40 @@ void SysTrayIcoCreate(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 //
 void SysTrayIcoMenu(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 {
+    //Setting up coordinate variable
     POINT pt;
-    GetCursorPos(&pt);
+    GetCursorPos(&pt);  //function to figure out the coordinates of the mouse
 
-    HMENU hPopMenu = CreatePopupMenu();
-    MENUITEMINFO hExit;
+    //Setting up PopUp menu variables
+    HMENU hIcoPopMenu = CreatePopupMenu();
+    HMENU hIPMFile = CreateMenu();
+    HMENU hIPMptions = CreateMenu();
 
-    memset(&hExit, 0, sizeof(hExit));
-    hExit.cbSize = sizeof(hExit);
-    hExit.fMask = MIIM_TYPE | MIIM_ID;
-    hExit.fType = MFT_STRING;
-    hExit.wID = IDM_EXIT;
-    hExit.dwTypeData = (LPWSTR)L"Exit";
+    //System Tray Icon PopUp Menu options
+    AppendMenu(hIcoPopMenu, MF_POPUP, (UINT_PTR)hIPMFile, L"File");
+    AppendMenu(hIcoPopMenu, MF_POPUP, (UINT_PTR)hIPMptions, L"Options");
 
-    InsertMenuItem(hPopMenu, SC_CLOSE, FALSE, &hExit);
+    //System Tray Icon PopUp Menu SubOptions for "File"
+    AppendMenu(hIPMFile, MF_STRING, IDM_EXIT, L"Exit");
 
+    //System Tray Icon PopUp Menu SubOptions for "Options"
+    AppendMenu(hIPMptions, MF_STRING, IDM_AKL, L"Active Keyboard Layout");
+
+    //Check or uncheck the AKL option based on main menu option
+    HMENU hMWMOptions = GetSubMenu(hMainMenu, 1);
+    UINT state = GetMenuState(hMWMOptions, IDM_AKL, MF_BYCOMMAND);
+    if (state == MF_CHECKED)
+    {
+        CheckMenuItem(hIPMptions, IDM_AKL, MF_CHECKED);
+    }
+    else
+    {
+        CheckMenuItem(hIPMptions, IDM_AKL, MF_UNCHECKED);
+    }
+
+    //Initialize the menu on mouse XY coordinates
     SetForegroundWindow(hWnd);
-    TrackPopupMenu(hPopMenu, TPM_LEFTALIGN | TPM_LEFTBUTTON | TPM_BOTTOMALIGN, pt.x, pt.y, 0, hWnd, NULL);
+    TrackPopupMenu(hIcoPopMenu, TPM_LEFTALIGN | TPM_LEFTBUTTON | TPM_BOTTOMALIGN, pt.x, pt.y, 0, hWnd, NULL);
 }
 
 //
@@ -326,21 +365,18 @@ void SysTrayIcoMenu(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 //
 void AKLToggle(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    HMENU hMenu = GetMenu(hWnd);
-    HMENU hOptions = GetSubMenu(hMenu, 1);
-    HMENU h1Option = GetSubMenu(hOptions, 0);
-
-    UINT state = GetMenuState(hOptions, IDM_AKL, MF_BYCOMMAND);
+    HMENU hMWMOptions = GetSubMenu(hMainMenu, 1);
+    UINT state = GetMenuState(hMWMOptions, IDM_AKL, MF_BYCOMMAND);
 
     if (state == MF_CHECKED)
     {
         SuspendThread(secInst);
-        CheckMenuItem(hOptions, IDM_AKL, MF_UNCHECKED);
+        CheckMenuItem(hMWMOptions, IDM_AKL, MF_UNCHECKED);
     }
     else
     {
         ResumeThread(secInst);
-        CheckMenuItem(hOptions, IDM_AKL, MF_CHECKED);
+        CheckMenuItem(hMWMOptions, IDM_AKL, MF_CHECKED);
     }
 }
 
@@ -376,4 +412,21 @@ std::string getKeyboardLayout()
     keyboardHex = temp.str();
 
     return keyboardHex;
+}
+
+//
+//  FUNCTION: loadImages()
+//
+//  PURPOSE: Loads the images necessary for working
+//
+//
+void loadImages(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    hBitmap = (HBITMAP)LoadImage(hInst, L"KeyboardLayouts/ISO_Keyboard_Layout.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+
+    if (hBitmap == NULL)
+    {
+        DWORD lastError = GetLastError();
+        MessageBox(NULL, L"Load Image Failed", L"Error", MB_OK);
+    };
 }
