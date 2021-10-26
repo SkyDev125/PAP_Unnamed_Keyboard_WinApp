@@ -1,5 +1,10 @@
 // PAP Unnamed Keyboard.cpp : Defines the entry point for the application.
 //
+// TODO : Changing the Image according to the Active Keyboard layout.
+// TODO : Send & Receive information through bluethooth over to raspberry PI.
+// Extras
+// TODO : Change Keyboard Layout based on active windows (aka discord special keyboard layout or overwatch etc)
+// TODO : Get Password Automatically from phone 2 fac auth.
 
 #include "framework.h"              //Library with the main includes necessary for the aplication
 #include "PAP Unnamed Keyboard.h"   //Library related to the resources needed for the application
