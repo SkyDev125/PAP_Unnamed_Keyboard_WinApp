@@ -1,6 +1,5 @@
 // PAP Unnamed Keyboard.cpp : Defines the entry point for the application.
 //
-// TODO : Changing the Image according to the Active Keyboard layout.
 // TODO : Send & Receive information through bluethooth over to raspberry PI.
 // Extras
 // TODO : Change Keyboard Layout based on active windows (aka discord special keyboard layout or overwatch etc)
@@ -12,14 +11,15 @@
 #define MAX_LOADSTRING 100          //Max string size for text
 
 // Global Variables:
-HINSTANCE hInst;                                //Current instance
-HANDLE secInst;                                 //Second Thread
-WCHAR szTitle[MAX_LOADSTRING];                  //The title bar text
-WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
-NOTIFYICONDATA NotifyIcon;                      //Create System Tray variable
-std::string AKL;                                //Active Keyboard Layout ID
-HMENU hMainMenu;
-HBITMAP hBitmap = NULL;
+HINSTANCE       hInst;                              //Current instance
+HANDLE          secInst;                            //Second Thread
+WCHAR           szTitle[MAX_LOADSTRING];            //The title bar text
+WCHAR           szWindowClass[MAX_LOADSTRING];      //The main window class name
+NOTIFYICONDATA  NotifyIcon;                         //Create System Tray variable
+std::string     AKL;                                //Active Keyboard Layout ID
+HMENU           hMainMenu;                          //Main Window Menu handle
+HBITMAP         AKLhBitmap = NULL;                  //Keyboard Image Bitmap
+HWND            ExhWnd;
 
 
 // Forward declarations of functions included in this code module:
@@ -32,8 +32,9 @@ void                AKLToggle(HWND, UINT, WPARAM, LPARAM);          //Toggles th
 DWORD WINAPI        secondThreadFunc(LPVOID lpParam);               //Creates a second Thread for the application
 std::string         getKeyboardLayout();                            //Gets Keyboard Layout Dynamically as an integer in its Identifier Code
 void                SysTrayIcoCreate(HWND, UINT, WPARAM, LPARAM);   //Creates the System icon tray
-void                SysTrayIcoMenu(HWND, UINT, WPARAM, LPARAM);
-void                loadImages(HWND, UINT, WPARAM, LPARAM);
+void                SysTrayIcoMenu(HWND, UINT, WPARAM, LPARAM);     //Create System tray menu for the icon
+void                loadAKLImages(HWND, UINT, WPARAM, LPARAM);      //Load Images for AKL
+void                onPaint(HWND, UINT, WPARAM, LPARAM);            //Paint the window when needed
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,             //Main Function that will start the application
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -147,13 +148,13 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+    ExhWnd = hWnd;  //Save hWnd as global variable
     switch (message)    //Switch message that has been handled by winproc
     {
     case WM_CREATE:
         {   
-            loadImages(hWnd, message, wParam, lParam);
-            menuCreate(hWnd, message, wParam, lParam);
-            SysTrayIcoCreate(hWnd, message, wParam, lParam);    
+            menuCreate(hWnd, message, wParam, lParam);          //Create the menu for the main window
+            SysTrayIcoCreate(hWnd, message, wParam, lParam);    //Create the system tray icon
         }
         break;
 
@@ -181,50 +182,31 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
 
     case WM_SYSTRAYICO:
-        // systray msg callback 
-        switch (LOWORD(lParam))
         {
-            case WM_RBUTTONDOWN:
+            // systray msg callback 
+            switch (LOWORD(lParam))
+            {
+            case WM_RBUTTONDOWN:    //on right button click open sys tray menu
                 SysTrayIcoMenu(hWnd, message, wParam, lParam);
                 break;
 
             default:
                 break;
+            }
         }
         break;
 
     case WM_PAINT:
         {
-            PAINTSTRUCT     ps;
-            HDC             hdc;
-            BITMAP          bitmap;
-            HDC             hdcMem;
-            HGDIOBJ         oldBitmap;
-
-            hdc = BeginPaint(hWnd, &ps);
-
-            hdcMem = CreateCompatibleDC(hdc);
-            oldBitmap = SelectObject(hdcMem, hBitmap);
-
-            GetObject(hBitmap, sizeof(bitmap), &bitmap);
-            int     posx    = 70; 
-            int     posy    = 45;
-            int     sizex   = 0;
-            int     sizey   = 0;
-            BitBlt(hdc, posx, posy, bitmap.bmWidth, bitmap.bmHeight, hdcMem, sizex, sizey, SRCCOPY);
-
-            SelectObject(hdcMem, oldBitmap);
-            DeleteDC(hdcMem);
-
-            EndPaint(hWnd, &ps);
+            onPaint(hWnd, message, wParam, lParam);     //Paint the Window
         }
         break;
-
+        
     case WM_DESTROY:
         {
-            DeleteObject(hBitmap);
-            Shell_NotifyIcon(NIM_DELETE, &NotifyIcon);
-            PostQuitMessage(0); //Quit the application and exit the code.
+            DeleteObject(AKLhBitmap);                   //Delete AKL loaded image
+            Shell_NotifyIcon(NIM_DELETE, &NotifyIcon);  //Delete System tray icon
+            PostQuitMessage(0);                         //Quit the application and exit the code.
         }
         break;
 
@@ -272,6 +254,7 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 //
 void menuCreate(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+    //Set Main Variables
     hMainMenu = CreateMenu();
     HMENU hFile = CreateMenu();
     HMENU hOptions  = CreateMenu();
@@ -313,6 +296,7 @@ void SysTrayIcoCreate(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     //Add the Icon and show it
     Shell_NotifyIcon(NIM_ADD, &NotifyIcon);
+
     // Set the version
     Shell_NotifyIcon(NIM_SETVERSION, &NotifyIcon);
 
@@ -359,7 +343,7 @@ void SysTrayIcoMenu(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     //Initialize the menu on mouse XY coordinates
     SetForegroundWindow(hWnd);
-    TrackPopupMenu(hIcoPopMenu, TPM_LEFTALIGN | TPM_LEFTBUTTON | TPM_BOTTOMALIGN, pt.x, pt.y, 0, hWnd, NULL);
+    TrackPopupMenu(hIcoPopMenu, TPM_LEFTALIGN | TPM_LEFTBUTTON | TPM_BOTTOMALIGN, pt.x, pt.y, 0, hWnd, NULL);   //Track mouse coordinates and expose popup menu
 }
 
 //
@@ -370,28 +354,46 @@ void SysTrayIcoMenu(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 //
 void AKLToggle(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    HMENU hMWMOptions = GetSubMenu(hMainMenu, 1);
-    UINT state = GetMenuState(hMWMOptions, IDM_AKL, MF_BYCOMMAND);
+    //Set Main Variables
+    HMENU   hMWMOptions = GetSubMenu(hMainMenu, 1);
+    UINT    state       = GetMenuState(hMWMOptions, IDM_AKL, MF_BYCOMMAND);
 
-    if (state == MF_CHECKED)
+    if (state == MF_CHECKED)                                    
     {
-        SuspendThread(secInst);
-        CheckMenuItem(hMWMOptions, IDM_AKL, MF_UNCHECKED);
+        SuspendThread(secInst);                             //Suspend AKL Thread
+        CheckMenuItem(hMWMOptions, IDM_AKL, MF_UNCHECKED);  //Uncheck AKL Menu Option
+        AKL = "";                                           //Set AKL to ""
+        loadAKLImages(hWnd, message, wParam, lParam);       //Load "" Disabled Keyboard image
     }
     else
     {
-        ResumeThread(secInst);
-        CheckMenuItem(hMWMOptions, IDM_AKL, MF_CHECKED);
+        ResumeThread(secInst);                              //Resume AKL Thread
+        CheckMenuItem(hMWMOptions, IDM_AKL, MF_CHECKED);    //Check AKL Menu Option
+        AKL = getKeyboardLayout();                          //Set variable to Active Keyboard Layout
+        loadAKLImages(hWnd, message, wParam, lParam);       //Load old keyboard image (gets updated instantly to the current AKL)
     }
 }
 
-// Second Threaded Function
+//
+//  PURPOSE: Run Second Thread of the application.
+//
+//
 DWORD WINAPI secondThreadFunc(LPVOID lpParam)
 {
-    // run loop
+    std::string pastAKL = "0";  //Variable to hold AKL past state (help detect change and save computer resources)
+
+    // run Thread Loop
     while (true)
     {
+        //Collect AKL info
         AKL = getKeyboardLayout();
+
+        //Only load image when change is detected (lightweight)
+        if (AKL != pastAKL)
+        {
+            pastAKL = AKL;                              //Save AKL state
+            loadAKLImages(ExhWnd, NULL, NULL, NULL);    //Load new Keyboard layout for updated AKL
+        }
     }
     return 0;
 }
@@ -404,34 +406,84 @@ DWORD WINAPI secondThreadFunc(LPVOID lpParam)
 //
 std::string getKeyboardLayout() 
 {
+    //Set main variables
     std::stringstream temp;
     int keyboardDec;
     std::string keyboardHex;
 
+    //Get AKL information
     keyboardDec = HIWORD(
-        GetKeyboardLayout(
-            GetWindowThreadProcessId(
-                GetForegroundWindow(), NULL)));
+        GetKeyboardLayout(                          //Collect AKL from process ID of currently active window
+            GetWindowThreadProcessId(               //Collect Process ID
+                GetForegroundWindow(), NULL)));     //Window currently active
 
-    temp << std::hex << keyboardDec << std::endl;
-    keyboardHex = temp.str();
+    temp << std::hex << keyboardDec << std::endl;   //Transform decimal into Hexadecimal   
+    keyboardHex = temp.str();                       //Transform into String
 
-    return keyboardHex;
+    return keyboardHex;                             //Send AKL info back as String
 }
 
 //
-//  FUNCTION: loadImages()
+//  FUNCTION: loadAKLImages()
 //
 //  PURPOSE: Loads the images necessary for working
 //
 //
-void loadImages(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+void loadAKLImages(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    hBitmap = (HBITMAP)LoadImage(hInst, L"KeyboardLayouts/ISO_Keyboard_Layout.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-
-    if (hBitmap == NULL)
+    if      (AKL == "")         //Load Disabled Keyboard Image
     {
-        DWORD lastError = GetLastError();
-        MessageBox(NULL, L"Load Image Failed", L"Error", MB_OK);
+        AKLhBitmap = (HBITMAP)LoadImage(hInst, L"KeyboardLayouts/ISO_Keyboard_Layout_Deactivated.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+    }
+    else if (AKL == "816\n")    //Load PT Keyboard Image
+    {
+        AKLhBitmap = (HBITMAP)LoadImage(hInst, L"KeyboardLayouts/ISO_Keyboard_Layout_816.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+    }
+    else if (AKL == "809\n")    //Load GB Keyboard Image
+    {
+        AKLhBitmap = (HBITMAP)LoadImage(hInst, L"KeyboardLayouts/ISO_Keyboard_Layout_809.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+    }
+    else if (AKL == "f020\n")   //Load CMS Keyboard Image
+    {
+        AKLhBitmap = (HBITMAP)LoadImage(hInst, L"KeyboardLayouts/ISO_Keyboard_Layout_f020.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+    }
+
+    if (AKLhBitmap == NULL)
+    {
+        MessageBox(NULL, L"Load Image Failed", L"Error", MB_OK);    //Show message box in case Loading fails
     };
+
+    RedrawWindow(ExhWnd, NULL, NULL, RDW_INVALIDATE); //Update the image
+}
+
+//
+//  FUNCTION: onPaint()
+//
+//  PURPOSE: Paints the Main window as neeeded.
+//
+//
+void onPaint(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    PAINTSTRUCT     ps;
+    HDC             hdc;
+    BITMAP          bitmap;
+    HDC             hdcMem;
+    HGDIOBJ         oldBitmap;
+
+    hdc = BeginPaint(hWnd, &ps);
+
+    hdcMem = CreateCompatibleDC(hdc);
+    oldBitmap = SelectObject(hdcMem, AKLhBitmap);
+
+    GetObject(AKLhBitmap, sizeof(bitmap), &bitmap);
+    int     posx = 70;
+    int     posy = 45;
+    int     sizex = 0;
+    int     sizey = 0;
+    BitBlt(hdc, posx, posy, bitmap.bmWidth, bitmap.bmHeight, hdcMem, sizex, sizey, SRCCOPY);
+
+    SelectObject(hdcMem, oldBitmap);
+    DeleteDC(hdcMem);
+
+    EndPaint(hWnd, &ps);
 }

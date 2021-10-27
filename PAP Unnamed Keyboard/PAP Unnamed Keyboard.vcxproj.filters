@@ -48,7 +48,16 @@
     <Image Include="icon1.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="KeyboardLayouts\ISO_Keyboard_Layout.bmp">
+    <Image Include="KeyboardLayouts\ISO_Keyboard_Layout_816.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="KeyboardLayouts\ISO_Keyboard_Layout_809.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="KeyboardLayouts\ISO_Keyboard_Layout_Deactivated.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="KeyboardLayouts\ISO_Keyboard_Layout_f020.bmp">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>
