@@ -20,6 +20,5 @@
 #include <commctrl.h>
 #include <objidl.h>
 #include <gdiplus.h>
-//NameSpaces
 #pragma comment (lib, "Gdiplus.lib")
 using namespace Gdiplus;

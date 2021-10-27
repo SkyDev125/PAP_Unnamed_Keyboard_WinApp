@@ -3,14 +3,17 @@
 // TODO : Send & Receive information through bluethooth over to raspberry PI.
 // Extras
 // TODO : Change Keyboard Layout based on active windows (aka discord special keyboard layout or overwatch etc)
-// TODO : Get Password Automatically from phone 2 fac auth.
 
+
+//Necessary #include files
+#pragma region include;
 #include "framework.h"              //Library with the main includes necessary for the aplication
 #include "PAP Unnamed Keyboard.h"   //Library related to the resources needed for the application
-
-#define MAX_LOADSTRING 100          //Max string size for text
+#pragma endregion
 
 // Global Variables:
+#pragma region Global Variables;
+#define         MAX_LOADSTRING 100                  //Max string size for text
 HINSTANCE       hInst;                              //Current instance
 HANDLE          secInst;                            //Second Thread
 WCHAR           szTitle[MAX_LOADSTRING];            //The title bar text
@@ -20,9 +23,10 @@ std::string     AKL;                                //Active Keyboard Layout ID
 HMENU           hMainMenu;                          //Main Window Menu handle
 HBITMAP         AKLhBitmap = NULL;                  //Keyboard Image Bitmap
 HWND            ExhWnd;
-
+#pragma endregion
 
 // Forward declarations of functions included in this code module:
+#pragma region Global Functions;
 ATOM                MyRegisterClass(HINSTANCE hInstance);           //Class Registration
 BOOL                InitInstance(HINSTANCE, int);                   //Main Window Declaration
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);            //Windows Procedure (message handler)
@@ -35,8 +39,11 @@ void                SysTrayIcoCreate(HWND, UINT, WPARAM, LPARAM);   //Creates th
 void                SysTrayIcoMenu(HWND, UINT, WPARAM, LPARAM);     //Create System tray menu for the icon
 void                loadAKLImages(HWND, UINT, WPARAM, LPARAM);      //Load Images for AKL
 void                onPaint(HWND, UINT, WPARAM, LPARAM);            //Paint the window when needed
+#pragma endregion
 
-int APIENTRY wWinMain(_In_ HINSTANCE hInstance,             //Main Function that will start the application
+//Main Function that will start the application starting with win32 api
+#pragma region WinApi function;
+int APIENTRY wWinMain(_In_ HINSTANCE hInstance,             
                      _In_opt_ HINSTANCE hPrevInstance,
                      _In_ LPWSTR    lpCmdLine,
                      _In_ int       nCmdShow)
@@ -79,6 +86,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,             //Main Function that
 
     return (int) msg.wParam;                                    //Finalize the application
 }
+#pragma endregion
 
 //
 //  FUNCTION: MyRegisterClass()
@@ -121,7 +129,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    hInst = hInstance; // Store instance handle in our global variable
 
    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,   //Create the Window
-      CW_USEDEFAULT, CW_USEDEFAULT, 1200, 500, nullptr, nullptr, hInstance, nullptr);
+      CW_USEDEFAULT, CW_USEDEFAULT, 1000, 1000*0.3364+50, nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
    {
@@ -148,17 +156,18 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    ExhWnd = hWnd;  //Save hWnd as global variable
-    switch (message)    //Switch message that has been handled by winproc
+    ExhWnd = hWnd;          //Save hWnd as global variable
+    
+    switch (message)        //Switch message that has been handled by winproc
     {
-    case WM_CREATE:
+    case WM_CREATE:         //Runs once only when the app starts
         {   
             menuCreate(hWnd, message, wParam, lParam);          //Create the menu for the main window
             SysTrayIcoCreate(hWnd, message, wParam, lParam);    //Create the system tray icon
         }
         break;
 
-    case WM_COMMAND:    
+    case WM_COMMAND:        //Runs when the menu buttons are selected    
         {
             // Parse the menu selections:
             switch (LOWORD(wParam))
@@ -175,13 +184,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 DestroyWindow(hWnd);    //Destroy Main Window 
                 break;
 
+            case IDM_SHOW:
+                ShowWindow(hWnd, SW_NORMAL);
+                break;
+
             default:
                 return DefWindowProc(hWnd, message, wParam, lParam);
             }
         }
         break;
 
-    case WM_SYSTRAYICO:
+    case WM_SYSTRAYICO:     //Runs when the system tray icon is messed with
         {
             // systray msg callback 
             switch (LOWORD(lParam))
@@ -191,18 +204,40 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 break;
 
             default:
-                break;
+                return DefWindowProc(hWnd, message, wParam, lParam);
             }
         }
         break;
 
-    case WM_PAINT:
+    case WM_GETMINMAXINFO:  //Limit the window minimum size
+        {
+            LPMINMAXINFO lpMMI = (LPMINMAXINFO)lParam;
+            lpMMI->ptMinTrackSize.x = 700;              //minimum width
+            lpMMI->ptMinTrackSize.y = 700*0.3364+50;    //minimum height
+        }
+        break;
+
+    case WM_PAINT:          //Runs when the window needs to be drawn
         {
             onPaint(hWnd, message, wParam, lParam);     //Paint the Window
         }
         break;
         
-    case WM_DESTROY:
+    case WM_CLOSE:
+        {
+            if ((MessageBox(hWnd, L"Are you sure you wanna exit the application?", L"PAP Unnamed Keyboard", MB_YESNO)) == IDNO)
+            {
+                ShowWindow(hWnd, SW_HIDE);
+                return 0;
+            }
+            else
+            {
+                SendMessage(hWnd, WM_DESTROY, NULL, NULL);
+            }
+        }
+        break;
+
+    case WM_DESTROY:        //Runs when the user decided to exit the application
         {
             DeleteObject(AKLhBitmap);                   //Delete AKL loaded image
             Shell_NotifyIcon(NIM_DELETE, &NotifyIcon);  //Delete System tray icon
@@ -244,7 +279,6 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
     }
     return (INT_PTR)FALSE;
 }
-
 
 //
 //  FUNCTION: menuCreate(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -320,6 +354,8 @@ void SysTrayIcoMenu(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     HMENU hIPMptions = CreateMenu();
 
     //System Tray Icon PopUp Menu options
+    AppendMenu(hIcoPopMenu, MF_STRING, IDM_SHOW, L"Open");
+    AppendMenu(hIcoPopMenu, MF_SEPARATOR, NULL, NULL);
     AppendMenu(hIcoPopMenu, MF_POPUP, (UINT_PTR)hIPMFile, L"File");
     AppendMenu(hIcoPopMenu, MF_POPUP, (UINT_PTR)hIPMptions, L"Options");
 
@@ -472,15 +508,23 @@ void onPaint(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     hdc = BeginPaint(hWnd, &ps);
 
+        // Obtain the size of the drawing area.
+        RECT rc;
+        GetClientRect(
+            hWnd,
+            &rc
+        );
+ 
     hdcMem = CreateCompatibleDC(hdc);
     oldBitmap = SelectObject(hdcMem, AKLhBitmap);
 
-    GetObject(AKLhBitmap, sizeof(bitmap), &bitmap);
-    int     posx = 70;
-    int     posy = 45;
-    int     sizex = 0;
-    int     sizey = 0;
-    BitBlt(hdc, posx, posy, bitmap.bmWidth, bitmap.bmHeight, hdcMem, sizex, sizey, SRCCOPY);
+    //+10width + 50height error +/-
+    GetObject(AKLhBitmap, sizeof(bitmap), &bitmap);     
+    int     newWidth = (rc.right) * 0.8;                            //new width for the image
+    int     newHeight = newWidth * 0.3364;                          //new height for the image
+    int     posx = (rc.right) * 0.1;                                //x coordinates for where the image will be "(rc.right - newWidth)" inverts the alignment! so it can follow the "right" instead of left!
+    int     posy = (rc.bottom - newHeight) - rc.bottom*0.1;         //y coordinates for where the image will be "(rc.bottom - newHeight)" inverts the alignment! so it can follow the "bottom" instead of top! 
+    StretchBlt(hdc, posx, posy, newWidth, newHeight, hdcMem, 0, 0, bitmap.bmWidth, bitmap.bmHeight, SRCCOPY);
 
     SelectObject(hdcMem, oldBitmap);
     DeleteDC(hdcMem);
