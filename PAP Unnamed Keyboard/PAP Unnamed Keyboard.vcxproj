@@ -153,24 +153,14 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="icon1.ico" />
-    <Image Include="KeyboardLayouts\ISO_Keyboard_Layout_809.bmp" />
-    <Image Include="KeyboardLayouts\ISO_Keyboard_Layout_816.bmp" />
-    <Image Include="KeyboardLayouts\ISO_Keyboard_Layout_Deactivated.bmp" />
-    <Image Include="KeyboardLayouts\ISO_Keyboard_Layout_f020.bmp" />
+    <Image Include="KeyboardLayouts\407.bmp" />
+    <Image Include="KeyboardLayouts\409.bmp" />
+    <Image Include="KeyboardLayouts\809.bmp" />
+    <Image Include="KeyboardLayouts\80c.bmp" />
+    <Image Include="KeyboardLayouts\816.bmp" />
     <Image Include="PAP Unnamed Keyboard.ico" />
     <Image Include="small.ico" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-    <Import Project="..\packages\Microsoft.Toolkit.Uwp.Notifications.7.1.1\build\native\Microsoft.Toolkit.Uwp.Notifications.targets" Condition="Exists('..\packages\Microsoft.Toolkit.Uwp.Notifications.7.1.1\build\native\Microsoft.Toolkit.Uwp.Notifications.targets')" />
-  </ImportGroup>
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('..\packages\Microsoft.Toolkit.Uwp.Notifications.7.1.1\build\native\Microsoft.Toolkit.Uwp.Notifications.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Toolkit.Uwp.Notifications.7.1.1\build\native\Microsoft.Toolkit.Uwp.Notifications.targets'))" />
-  </Target>
+  <ImportGroup Label="ExtensionTargets" />
 </Project>

@@ -22,6 +22,7 @@ NOTIFYICONDATA  NotifyIcon;                         //Create System Tray variabl
 std::string     AKL;                                //Active Keyboard Layout ID
 HMENU           hMainMenu;                          //Main Window Menu handle
 HBITMAP         AKLhBitmap = NULL;                  //Keyboard Image Bitmap
+LPCSTR          AKLhText = NULL;                    //Keyboard Text
 HWND            ExhWnd;
 #pragma endregion
 
@@ -129,7 +130,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    hInst = hInstance; // Store instance handle in our global variable
 
    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,   //Create the Window
-      CW_USEDEFAULT, CW_USEDEFAULT, 1000, 1000*0.3364+50, nullptr, nullptr, hInstance, nullptr);
+      CW_USEDEFAULT, CW_USEDEFAULT, 800, (int)(1000 * 0.3364) + 50, nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
    {
@@ -212,8 +213,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_GETMINMAXINFO:  //Limit the window minimum size
         {
             LPMINMAXINFO lpMMI = (LPMINMAXINFO)lParam;
-            lpMMI->ptMinTrackSize.x = 700;              //minimum width
-            lpMMI->ptMinTrackSize.y = 700*0.3364+50;    //minimum height
+            lpMMI->ptMinTrackSize.x = 800;              //minimum width
+            lpMMI->ptMinTrackSize.y = (long)(1000*0.3364)+50;    //minimum height
         }
         break;
 
@@ -225,15 +226,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         
     case WM_CLOSE:
         {
-            if ((MessageBox(hWnd, L"Are you sure you wanna exit the application?", L"PAP Unnamed Keyboard", MB_YESNO)) == IDNO)
+            int MBID = MessageBox(hWnd, L"Are you sure you wanna exit the application?", L"PAP Unnamed Keyboard", MB_YESNOCANCEL | MB_DEFBUTTON2);
+            if (MBID == IDNO)
             {
                 ShowWindow(hWnd, SW_HIDE);
                 return 0;
             }
-            else
+            else if (MBID == IDYES)
             {
                 SendMessage(hWnd, WM_DESTROY, NULL, NULL);
             }
+            else {}
         }
         break;
 
@@ -467,21 +470,41 @@ std::string getKeyboardLayout()
 //
 void loadAKLImages(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+
     if      (AKL == "")         //Load Disabled Keyboard Image
     {
-        AKLhBitmap = (HBITMAP)LoadImage(hInst, L"KeyboardLayouts/ISO_Keyboard_Layout_Deactivated.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+        AKLhBitmap = (HBITMAP)LoadImage(hInst, L"KeyboardLayouts/Deactivated.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+        AKLhText = "Automatic Layout Detection Disabled!";
     }
     else if (AKL == "816\n")    //Load PT Keyboard Image
     {
-        AKLhBitmap = (HBITMAP)LoadImage(hInst, L"KeyboardLayouts/ISO_Keyboard_Layout_816.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+        AKLhBitmap = (HBITMAP)LoadImage(hInst, L"KeyboardLayouts/816.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+        AKLhText = "PT-PT Layout Detected!";
     }
-    else if (AKL == "809\n")    //Load GB Keyboard Image
+    else if (AKL == "809\n")    //Load EN-GB Keyboard Image
     {
-        AKLhBitmap = (HBITMAP)LoadImage(hInst, L"KeyboardLayouts/ISO_Keyboard_Layout_809.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+        AKLhBitmap = (HBITMAP)LoadImage(hInst, L"KeyboardLayouts/809.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+        AKLhText = "EN-GB Layout Detected!";
     }
-    else if (AKL == "f020\n")   //Load CMS Keyboard Image
+    else if (AKL == "409\n")    //Load EN-US Keyboard Image
     {
-        AKLhBitmap = (HBITMAP)LoadImage(hInst, L"KeyboardLayouts/ISO_Keyboard_Layout_f020.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+        AKLhBitmap = (HBITMAP)LoadImage(hInst, L"KeyboardLayouts/409.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+        AKLhText = "EN-US Layout Detected!";
+    }
+    else if (AKL == "407\n")    //Load DE Keyboard Image
+    {
+        AKLhBitmap = (HBITMAP)LoadImage(hInst, L"KeyboardLayouts/407.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+        AKLhText = "DE Layout Detected!";
+    }
+    else if (AKL == "80c\n")    //Load BE-FR Keyboard Image
+    {
+        AKLhBitmap = (HBITMAP)LoadImage(hInst, L"KeyboardLayouts/80c.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+        AKLhText = "BE-FR Layout Detected!";
+    }
+    else
+    {
+        AKLhBitmap = (HBITMAP)LoadImage(hInst, L"KeyboardLayouts/ISO_Keyboard_Layout_Deactivated.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+        AKLhText = AKL.c_str();
     }
 
     if (AKLhBitmap == NULL)
@@ -489,7 +512,7 @@ void loadAKLImages(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         MessageBox(NULL, L"Load Image Failed", L"Error", MB_OK);    //Show message box in case Loading fails
     };
 
-    RedrawWindow(ExhWnd, NULL, NULL, RDW_INVALIDATE); //Update the image
+    RedrawWindow(ExhWnd, NULL, NULL, RDW_INVALIDATE | RDW_ERASE);   //Update the image and text
 }
 
 //
@@ -508,22 +531,42 @@ void onPaint(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     hdc = BeginPaint(hWnd, &ps);
 
-        // Obtain the size of the drawing area.
-        RECT rc;
-        GetClientRect(
-            hWnd,
-            &rc
-        );
+    // Obtain the size of the drawing area.
+    RECT rc;
+    GetClientRect(
+        hWnd,
+        &rc
+    );
+
+    SelectObject(hdc, CreateFont(
+        50,
+        0,
+        0,
+        0,
+        700,
+        false,
+        false,
+        false,
+        DEFAULT_CHARSET,
+        OUT_DEFAULT_PRECIS,
+        CLIP_DEFAULT_PRECIS,
+        DEFAULT_QUALITY,
+        DEFAULT_PITCH,
+        NULL
+    ));
+
+    SetBkMode(hdc, TRANSPARENT);
+    DrawTextA(hdc, AKLhText, -1, &rc, DT_TOP | DT_CENTER);
  
     hdcMem = CreateCompatibleDC(hdc);
     oldBitmap = SelectObject(hdcMem, AKLhBitmap);
 
     //+10width + 50height error +/-
     GetObject(AKLhBitmap, sizeof(bitmap), &bitmap);     
-    int     newWidth = (rc.right) * 0.8;                            //new width for the image
-    int     newHeight = newWidth * 0.3364;                          //new height for the image
-    int     posx = (rc.right) * 0.1;                                //x coordinates for where the image will be "(rc.right - newWidth)" inverts the alignment! so it can follow the "right" instead of left!
-    int     posy = (rc.bottom - newHeight) - rc.bottom*0.1;         //y coordinates for where the image will be "(rc.bottom - newHeight)" inverts the alignment! so it can follow the "bottom" instead of top! 
+    int     newWidth = (int)((rc.right) * 0.95);     //new width for the image
+    int     newHeight = (int)(newWidth * 0.3364);   //new height for the image
+    int     posx = (int)((rc.right) * 0.025);        //x coordinates for where the image will be "(rc.right - newWidth)" inverts the alignment! so it can follow the "right" instead of left!
+    int     posy = 60;                              //y coordinates for the image
     StretchBlt(hdc, posx, posy, newWidth, newHeight, hdcMem, 0, 0, bitmap.bmWidth, bitmap.bmHeight, SRCCOPY);
 
     SelectObject(hdcMem, oldBitmap);

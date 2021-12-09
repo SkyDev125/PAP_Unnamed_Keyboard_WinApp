@@ -48,20 +48,20 @@
     <Image Include="icon1.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="KeyboardLayouts\ISO_Keyboard_Layout_816.bmp">
+    <Image Include="KeyboardLayouts\816.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="KeyboardLayouts\ISO_Keyboard_Layout_809.bmp">
+    <Image Include="KeyboardLayouts\409.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="KeyboardLayouts\ISO_Keyboard_Layout_Deactivated.bmp">
+    <Image Include="KeyboardLayouts\407.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="KeyboardLayouts\ISO_Keyboard_Layout_f020.bmp">
+    <Image Include="KeyboardLayouts\80c.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
+    <Image Include="KeyboardLayouts\809.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>
