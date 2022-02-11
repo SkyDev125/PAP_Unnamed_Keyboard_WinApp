@@ -20,5 +20,9 @@
 #include <commctrl.h>
 #include <objidl.h>
 #include <gdiplus.h>
+#include <bluetoothapis.h>
+#include <bthdef.h>
+#include <bthsdpdef.h>
+#include <ws2bth.h>
 #pragma comment (lib, "Gdiplus.lib")
 using namespace Gdiplus;

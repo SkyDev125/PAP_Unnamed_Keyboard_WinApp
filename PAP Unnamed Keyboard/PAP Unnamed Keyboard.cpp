@@ -40,6 +40,7 @@ void                SysTrayIcoCreate(HWND, UINT, WPARAM, LPARAM);   //Creates th
 void                SysTrayIcoMenu(HWND, UINT, WPARAM, LPARAM);     //Create System tray menu for the icon
 void                loadAKLImages(HWND, UINT, WPARAM, LPARAM);      //Load Images for AKL
 void                onPaint(HWND, UINT, WPARAM, LPARAM);            //Paint the window when needed
+void                KeyPresses();                                   //Presses and releases a key
 #pragma endregion
 
 //Main Function that will start the application starting with win32 api
@@ -432,6 +433,7 @@ DWORD WINAPI secondThreadFunc(LPVOID lpParam)
         {
             pastAKL = AKL;                              //Save AKL state
             loadAKLImages(ExhWnd, NULL, NULL, NULL);    //Load new Keyboard layout for updated AKL
+            KeyPresses(); 
         }
     }
     return 0;
@@ -573,4 +575,26 @@ void onPaint(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     DeleteDC(hdcMem);
 
     EndPaint(hWnd, &ps);
+}
+
+//
+//  FUNCTION: KeyPresses()
+//
+//  PURPOSE: Presses and releases a key
+//
+//
+void KeyPresses()
+{
+    INPUT inputs[2] = {};
+    ZeroMemory(inputs, sizeof(inputs));
+
+    inputs[0].type = INPUT_KEYBOARD;
+    inputs[0].ki.wVk = VK_CAPITAL;
+
+    inputs[1].type = INPUT_KEYBOARD;
+    inputs[1].ki.wVk = VK_CAPITAL;
+    inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
+
+
+    UINT uSent = SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
 }
